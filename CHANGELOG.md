@@ -35,6 +35,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions use [Se
 - Tests: 32 passing (4 new: special-category on Telegram quarantined + incident
   logged, special-category on a local channel allowed, non-personal on Telegram
   allowed, missing file allowed).
+- F5: CI (`.github/workflows/ci.yml`). Matrix on Python 3.11/3.12: installs the
+  package, restores/downloads the spaCy model (pip-cached), runs `pip check` +
+  the full test suite (`-m "not ollama"` — Ollama-dependent tests are skipped in
+  CI), and validates every installed protocol — re-asserting the non-negotiable
+  invariant that special-category data can never reach a cloud path.
 - F7: Moldova country pack (`md_MD`) — IDNP (person) and IDNO (legal entity)
   state-ID validators (shared 7-3-1 mod-10 checksum, disambiguated by context),
   IBAN-MD (mod-97), `+373` phones, deterministic synthetic generator, and

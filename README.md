@@ -11,8 +11,8 @@ cloud-direct), pseudonymizes anything that goes to the cloud, and **fails closed
 > **Status:** active development. Implemented: core pipeline + `ro_RO` country
 > pack, machine certification + signed passport + tiered fail-closed guard, the
 > work-protocol library (meta-skill) with 6 built-ins, the channel pre-gate for
-> Telegram/Slack, and country packs for Romania (`ro_RO`) and Moldova (`md_MD`).
-> On the roadmap: CI. See [`docs/architecture.md`](docs/architecture.md).
+> Telegram/Slack, country packs for Romania (`ro_RO`) and Moldova (`md_MD`), and
+> CI. See [`docs/architecture.md`](docs/architecture.md).
 
 ## How it works (in one picture)
 
