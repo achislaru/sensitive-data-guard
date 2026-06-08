@@ -1,0 +1,36 @@
+schema: 1
+id: expense-reconciliation
+name: "Expense reconciliation"
+version: 1.0.0
+author: builtin
+locale_scope: [ro_RO, md_MD]
+triggers: ["reconcile expenses", "reconciliere cheltuieli", "check expense report"]
+inputs:
+  - role: expenses
+    formats: [csv, xlsx]
+    columns: { "Furnizor": ORGANIZATION, "CUI": RO_CUI, "IBAN": RO_IBAN,
+               "Email": EMAIL_ADDRESS }
+classification:
+  data_class: personal_pseudonymizable
+required_path: cloud_pseudonymized
+steps:
+  - { id: detect, op: detect }
+  - { id: pseudo, op: pseudonymize }
+  - { id: check, op: ai_cloud, prompt_ref: check_cloud, expects_output: text }
+  - { id: restore, op: restore }
+  - { id: out, op: emit, handling: restore_then_return }
+prompts:
+  local: {}
+  cloud:
+    check_cloud: |
+      Review the pseudonymized expense rows below. Flag duplicates, outliers,
+      and arithmetic inconsistencies. Return a short bulleted list.
+      {{expenses}}
+output:
+  contains_pii: false
+  destination: file
+audit:
+  category: accounting
+  retention_class: standard
+hitl:
+  art22_decision: false

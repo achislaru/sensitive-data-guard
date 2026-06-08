@@ -1,0 +1,34 @@
+schema: 1
+id: payroll-analysis
+name: "Payroll statistical analysis"
+version: 1.0.0
+author: builtin
+locale_scope: [ro_RO, md_MD]
+triggers: ["analyze payroll", "raport salarial", "payroll statistics", "stat de plată"]
+inputs:
+  - role: payroll
+    formats: [csv, xlsx]
+    columns: { "Nume": PERSON, "CNP": RO_CNP, "IBAN": RO_IBAN, "Email": EMAIL_ADDRESS }
+classification:
+  data_class: special_category       # full payroll incl. CNP
+required_path: local                 # special-category => local only (structural)
+steps:
+  - { id: detect, op: detect }
+  - { id: stats, op: ai_local, prompt_ref: stats_local, expects_output: text }
+  - { id: out, op: emit, handling: aggregate_only }
+prompts:
+  local:
+    stats_local: |
+      From the payroll below, produce ONLY aggregate statistics: mean/median
+      gross salary, distribution by role, net/gross ratio. Do NOT output any
+      per-person row or identifier.
+      {{payroll}}
+  cloud: {}
+output:
+  contains_pii: false
+  destination: file
+audit:
+  category: payroll
+  retention_class: standard
+hitl:
+  art22_decision: false

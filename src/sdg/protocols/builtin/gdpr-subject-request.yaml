@@ -1,0 +1,35 @@
+schema: 1
+id: gdpr-subject-request
+name: "GDPR data-subject access request (Art. 15)"
+version: 1.0.0
+author: builtin
+locale_scope: [ro_RO, md_MD]
+triggers: ["subject access request", "cerere acces date", "Art. 15 request", "DSAR"]
+params: [subject]
+inputs:
+  - role: records
+    formats: [txt, csv, pdf, docx]
+    expected_entities: [PERSON, RO_CNP, EMAIL_ADDRESS, RO_PHONE, RO_IBAN, LOCATION]
+classification:
+  data_class: special_category       # locating a person's full record
+required_path: local                 # strictly local
+steps:
+  - { id: detect, op: detect }
+  - { id: compile, op: ai_local, prompt_ref: compile_local, expects_output: text }
+  - { id: out, op: emit, handling: local_only }
+prompts:
+  local:
+    compile_local: |
+      Help compile an Art. 15 access response: locate and list every category
+      of personal data about "{{subject}}" present in the records below, with
+      where each appears. Do not redact — this output is for the data subject.
+      {{records}}
+  cloud: {}
+output:
+  contains_pii: true                 # the response legitimately contains the subject's data
+  destination: file                  # local file only; never a network sink
+audit:
+  category: gdpr_dsar
+  retention_class: standard
+hitl:
+  art22_decision: false

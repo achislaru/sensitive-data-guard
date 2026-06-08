@@ -1,0 +1,45 @@
+schema: 1
+id: hr-cv-screening
+name: "HR CV screening"
+version: 1.0.0
+author: builtin
+locale_scope: [ro_RO, md_MD]
+triggers: ["screen CVs", "evaluează CV-uri", "triere candidați", "score this CV"]
+params: [role]
+inputs:
+  - role: candidate_cv
+    formats: [pdf, docx, txt]
+    expected_entities: [PERSON, RO_CNP, EMAIL_ADDRESS, RO_PHONE, RO_DATE]
+classification:
+  data_class: special_category       # CVs may contain CNP
+required_path: local                 # nothing leaves the machine
+steps:
+  - { id: detect, op: detect }
+  - { id: score, op: ai_local, prompt_ref: score_local, expects_output: json,
+      output_schema_ref: cv_score }
+  - { id: out, op: emit, handling: local_only }
+prompts:
+  local:
+    score_local: |
+      You assist an HR specialist. Score this CV 0-100 for fit to the role "{{role}}".
+      Return JSON: {"score": int, "rationale": str, "flags": [str]}.
+      This is DECISION SUPPORT ONLY; a human makes the hiring decision.
+      {{candidate_cv}}
+  cloud: {}
+schemas:
+  cv_score:
+    type: object
+    required: [score, rationale]
+    properties:
+      score: { type: integer }
+      rationale: { type: string }
+      flags: { type: array }
+output:
+  contains_pii: false
+  destination: file
+audit:
+  category: hr_recruitment
+  retention_class: short
+hitl:
+  art22_decision: true
+  gate_message: "Hiring/rejection is a human decision. AI output is support only."

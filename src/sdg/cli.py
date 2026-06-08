@@ -119,6 +119,70 @@ def _cmd_restore(args):
     return 0
 
 
+def _cmd_protocol(args):
+    from .protocols import engine, linter, loader
+    sub = args.protocol_cmd
+    if sub == "list":
+        print(json.dumps(loader.list_protocols(), ensure_ascii=False, indent=2))
+        return 0
+    if sub == "validate":
+        p = loader.load_file(__import__("pathlib").Path(args.file)) if args.file \
+            else loader.load(args.id)
+        errors, warnings = linter.validate(p)
+        print(json.dumps({"ok": not errors, "errors": errors,
+                          "warnings": warnings}, ensure_ascii=False, indent=2))
+        return 0 if not errors else 2
+    if sub == "dryrun":
+        res = engine.dryrun(args.id, locale=args.locale)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return 0 if res.get("ok") else 2
+    if sub == "run":
+        params = dict(kv.split("=", 1) for kv in (args.param or []))
+        try:
+            res = engine.run(args.id, _read(args.file), args.session,
+                             locale=args.locale, params=params,
+                             is_csv=_is_csv(args.file, args.csv),
+                             source_channel=args.channel)
+        except engine.ProtocolError as e:
+            print(f"HARD STOP: {e}", file=sys.stderr)
+            return 2
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
+    if sub == "resume":
+        try:
+            res = engine.resume(args.session, _read(args.output))
+        except engine.ProtocolError as e:
+            print(f"HARD STOP: {e}", file=sys.stderr)
+            return 2
+        print(json.dumps(res, ensure_ascii=False))
+        return 0
+    if sub == "new":
+        print(loader.TEMPLATE_PATH.read_text(encoding="utf-8"))
+        return 0
+    if sub == "export":
+        p = loader.load(args.id)
+        text = __import__("yaml").safe_dump(p, sort_keys=False, allow_unicode=True)
+        print(text + f"# sdg-checksum: {loader.checksum(p)}")
+        return 0
+    if sub == "import":
+        from pathlib import Path as _P
+        p = loader.load_file(_P(args.file))
+        errors, warnings = linter.validate(p)
+        if errors:
+            print(json.dumps({"imported": False, "errors": errors}), file=sys.stderr)
+            return 2
+        dry = engine.dryrun(p["id"], locale=p["locale_scope"][0])
+        if not dry.get("ok"):
+            print(json.dumps({"imported": False, "dryrun": dry}), file=sys.stderr)
+            return 2
+        dest = loader.user_dir() / f"{p['id']}.yaml"
+        dest.write_text(_P(args.file).read_text(encoding="utf-8"), encoding="utf-8")
+        print(json.dumps({"imported": True, "path": str(dest),
+                          "warnings": warnings}))
+        return 0
+    return 1
+
+
 def _cmd_audit(args):
     from . import audit
     if args.audit_cmd == "retention":
@@ -176,6 +240,27 @@ def build_parser() -> argparse.ArgumentParser:
     rs.add_argument("--session", required=True)
     rs.add_argument("--out", default="-")
     rs.set_defaults(func=_cmd_restore)
+
+    pr = sub.add_parser("protocol", help="work-protocol library")
+    prsub = pr.add_subparsers(dest="protocol_cmd", required=True)
+    prsub.add_parser("list")
+    pv = prsub.add_parser("validate")
+    pv.add_argument("--id"); pv.add_argument("--file")
+    pd = prsub.add_parser("dryrun"); pd.add_argument("--id", required=True)
+    prun = prsub.add_parser("run")
+    prun.add_argument("--id", required=True)
+    prun.add_argument("--file", required=True)
+    prun.add_argument("--session", required=True)
+    prun.add_argument("--param", action="append", help="key=value (repeatable)")
+    prun.add_argument("--csv", action="store_true")
+    prun.add_argument("--channel", default="cli")
+    pres = prsub.add_parser("resume")
+    pres.add_argument("--session", required=True)
+    pres.add_argument("--output", required=True, help="AI output file or -")
+    prsub.add_parser("new")
+    pe = prsub.add_parser("export"); pe.add_argument("--id", required=True)
+    pi = prsub.add_parser("import"); pi.add_argument("--file", required=True)
+    pr.set_defaults(func=_cmd_protocol)
 
     au = sub.add_parser("audit", help="audit log / retention / summary")
     ausub = au.add_subparsers(dest="audit_cmd", required=True)

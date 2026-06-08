@@ -1,0 +1,34 @@
+# Safe protocol template. Every safety field defaults to its most restrictive
+# value. The authoring flow (sdg protocol new) fills this in from an interview
+# and DERIVES data_class from facts — never let the user under-classify.
+schema: 1
+id: my-protocol                      # [a-z0-9-]
+name: "My protocol"
+version: 0.1.0
+author: user
+locale_scope: [ro_RO]
+triggers: ["describe the task in a phrase"]
+inputs:
+  - role: document
+    formats: [pdf, docx, txt]
+classification:
+  data_class: special_category       # most restrictive default
+required_path: local                 # forced to local while special_category
+steps:
+  - { id: detect, op: detect }
+  - { id: ai, op: ai_local, prompt_ref: main, expects_output: text }
+  - { id: out, op: emit, handling: local_only }
+prompts:
+  local:
+    main: |
+      Assist with the task on the following content. {{document}}
+  cloud: {}                          # empty => cannot run on a cloud path
+output:
+  contains_pii: false
+  destination: file
+audit:
+  category: general
+  retention_class: short
+hitl:
+  art22_decision: false
+  gate_message: "Final decisions about people are made by a human."

@@ -1,0 +1,111 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "sdg work protocol",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "id", "name", "version", "author", "locale_scope",
+               "triggers", "inputs", "classification", "required_path",
+               "steps", "output", "audit", "hitl"],
+  "properties": {
+    "schema": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "name": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "author": { "type": "string", "minLength": 1 },
+    "locale_scope": {
+      "type": "array", "minItems": 1,
+      "items": { "type": "string", "pattern": "^[a-z]{2}_[A-Z]{2}$" }
+    },
+    "triggers": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "params": { "type": "array", "items": { "type": "string" } },
+    "inputs": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "formats"],
+        "properties": {
+          "role": { "type": "string" },
+          "formats": { "type": "array", "items": { "type": "string" } },
+          "expected_entities": { "type": "array", "items": { "type": "string" } },
+          "columns": { "type": "object" }
+        }
+      }
+    },
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data_class"],
+      "properties": {
+        "data_class": {
+          "enum": ["special_category", "personal_pseudonymizable", "non_personal"]
+        }
+      }
+    },
+    "required_path": { "enum": ["local", "cloud_pseudonymized", "cloud_direct"] },
+    "steps": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "op"],
+        "properties": {
+          "id": { "type": "string" },
+          "op": { "enum": ["detect", "pseudonymize", "ai_local", "ai_cloud",
+                           "restore", "emit"] },
+          "prompt_ref": { "type": "string" },
+          "expects_output": { "enum": ["text", "json"] },
+          "output_schema_ref": { "type": "string" },
+          "handling": { "enum": ["local_only", "restore_then_return",
+                                 "aggregate_only"] }
+        }
+      }
+    },
+    "prompts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "local": { "type": "object" },
+        "cloud": { "type": "object" }
+      }
+    },
+    "schemas": { "type": "object" },
+    "output": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contains_pii", "destination"],
+      "properties": {
+        "contains_pii": { "type": "boolean" },
+        "destination": { "enum": ["file", "stdout", "vault-note"] }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "retention_class"],
+      "properties": {
+        "category": { "type": "string" },
+        "retention_class": { "enum": ["short", "standard"] }
+      }
+    },
+    "hitl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["art22_decision"],
+      "properties": {
+        "art22_decision": { "type": "boolean" },
+        "gate_message": { "type": "string" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "comment": "STRUCTURAL: special-category data may ONLY use the local path.",
+      "if": {
+        "properties": { "classification": {
+          "properties": { "data_class": { "const": "special_category" } } } }
+      },
+      "then": { "properties": { "required_path": { "const": "local" } } }
+    }
+  ]
+}

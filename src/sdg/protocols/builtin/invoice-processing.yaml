@@ -1,0 +1,35 @@
+schema: 1
+id: invoice-processing
+name: "Invoice processing"
+version: 1.0.0
+author: builtin
+locale_scope: [ro_RO, md_MD]
+triggers: ["process invoices", "verifică factura", "check this invoice", "factură"]
+inputs:
+  - role: invoice
+    formats: [pdf, txt]
+    expected_entities: [RO_CUI, RO_IBAN, PERSON, EMAIL_ADDRESS, RO_PHONE, ORGANIZATION]
+classification:
+  data_class: personal_pseudonymizable
+required_path: cloud_pseudonymized
+steps:
+  - { id: detect, op: detect }
+  - { id: pseudo, op: pseudonymize }
+  - { id: analyze, op: ai_cloud, prompt_ref: analyze_cloud, expects_output: text }
+  - { id: restore, op: restore }
+  - { id: out, op: emit, handling: restore_then_return }
+prompts:
+  local: {}
+  cloud:
+    analyze_cloud: |
+      Check the invoice below: line arithmetic, 19% VAT, and the total.
+      Report any discrepancy, then summarise the invoice in two sentences.
+      {{invoice}}
+output:
+  contains_pii: false
+  destination: file
+audit:
+  category: accounting
+  retention_class: standard
+hitl:
+  art22_decision: false

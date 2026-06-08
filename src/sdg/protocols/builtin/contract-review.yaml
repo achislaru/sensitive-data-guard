@@ -1,0 +1,35 @@
+schema: 1
+id: contract-review
+name: "Contract review"
+version: 1.0.0
+author: builtin
+locale_scope: [ro_RO, md_MD]
+triggers: ["review contract", "revizuiește contractul", "analyze this contract"]
+inputs:
+  - role: contract
+    formats: [pdf, docx, txt]
+    expected_entities: [PERSON, RO_CNP, RO_CUI, ORGANIZATION, LOCATION]
+classification:
+  data_class: personal_pseudonymizable
+required_path: cloud_pseudonymized
+steps:
+  - { id: detect, op: detect }
+  - { id: pseudo, op: pseudonymize }
+  - { id: review, op: ai_cloud, prompt_ref: review_cloud, expects_output: text }
+  - { id: restore, op: restore }
+  - { id: out, op: emit, handling: restore_then_return }
+prompts:
+  local: {}
+  cloud:
+    review_cloud: |
+      Summarise the key clauses of the contract below and flag any risky or
+      unusual terms (liability, termination, penalties, auto-renewal).
+      {{contract}}
+output:
+  contains_pii: false
+  destination: file
+audit:
+  category: legal
+  retention_class: standard
+hitl:
+  art22_decision: false
