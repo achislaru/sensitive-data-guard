@@ -1,0 +1,21 @@
+# --- secrets & local state (NEVER commit) ---
+*.key
+*.db
+passport*.json
+passport*.sig
+quarantine/
+state/
+logs/
+
+# --- python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# --- os ---
+.DS_Store

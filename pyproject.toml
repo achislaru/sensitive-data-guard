@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sensitive-data-guard"
+version = "0.1.0"
+description = "GDPR-compliant sensitive-data workflow guard for AI agents: local/cloud routing, fail-closed PII pseudonymization, machine certification, and a library of work protocols."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Nova Cortex" }]
+keywords = ["gdpr", "pii", "pseudonymization", "presidio", "privacy", "ai-agents"]
+
+dependencies = [
+    "presidio-analyzer>=2.2",
+    "presidio-anonymizer>=2.2",
+    "spacy>=3.7",
+    "cryptography>=42",
+    "PyYAML>=6.0",
+    "click>=8.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+sdg = "sdg.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"sdg.packs.ro_RO" = ["thresholds.yaml", "fixtures/*"]
+"sdg.protocols" = ["schema.json", "_template.yaml", "builtin/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["ollama: tests requiring a local Ollama model (skipped in CI)"]
