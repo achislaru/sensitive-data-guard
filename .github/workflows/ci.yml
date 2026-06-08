@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Cache spaCy model
+        uses: actions/cache@v4
+        with:
+          # spaCy installs the model as a pip package; the downloaded wheel
+          # lives in pip's cache, so restoring it makes the download a no-op.
+          path: ~/.cache/pip
+          key: spacy-ro_core_news_lg-${{ runner.os }}-py${{ matrix.python-version }}
+          restore-keys: spacy-ro_core_news_lg-${{ runner.os }}-
+
+      - name: Download spaCy model (ro_core_news_lg)
+        run: python -m spacy download ro_core_news_lg
+
+      - name: Sanity check
+        run: |
+          pip check
+          sdg version
+          sdg packs
+
+      - name: Run tests (Ollama-dependent tests skipped in CI)
+        run: pytest -q -m "not ollama"
+
+      - name: Validate all installed protocols
+        # The fail-closed invariant — special-category data can never reach a
+        # cloud path — is non-negotiable and enforced here on every protocol
+        # (built-in and any community/user protocol discovered).
+        run: |
+          python - <<'PY'
+          import sys
+          from sdg.protocols import loader, linter
+          bad = []
+          for pid in loader.list_protocols():
+              proto = loader.load(pid)
+              errors, _ = linter.validate(proto)
+              if errors:
+                  bad.append((pid, errors))
+          if bad:
+              for pid, errors in bad:
+                  print(f"FAIL {pid}: {errors}", file=sys.stderr)
+              sys.exit(1)
+          print("all protocols valid")
+          PY
