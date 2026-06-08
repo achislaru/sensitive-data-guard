@@ -8,10 +8,11 @@ the right processing path (local model / cloud-with-pseudonymization /
 cloud-direct), pseudonymizes anything that goes to the cloud, and **fails closed**
 — if validated PII would reach the cloud, the operation stops.
 
-> **Status:** early development. Phases F0–F1 (packaging + core pipeline + the
-> `ro_RO` country pack) are implemented. Certification, the guard/passport, the
-> protocol library, the Moldova pack, and the channel pre-gate are on the
-> roadmap — see `docs/architecture.md` (to be added).
+> **Status:** active development. Implemented: core pipeline + `ro_RO` country
+> pack, machine certification + signed passport + tiered fail-closed guard, the
+> work-protocol library (meta-skill) with 6 built-ins, and the channel pre-gate
+> for Telegram/Slack. On the roadmap: the Moldova (`md_MD`) pack and CI.
+> See [`docs/architecture.md`](docs/architecture.md).
 
 ## How it works (in one picture)
 
@@ -36,7 +37,16 @@ by a local model (Ollama). Only pseudonymized text is ever sent to a cloud model
 - **Country packs**: PII recognizers, validators and synthetic-data generators
   are pluggable per locale. `ro_RO` (Romania) ships first.
 
-## Install (development)
+## Install
+
+One command (creates `.venv`, installs `sdg`, pulls the spaCy model, certifies
+the machine):
+
+```bash
+./install.sh
+```
+
+Or manually for development:
 
 ```bash
 python3.11 -m venv .venv
@@ -47,11 +57,22 @@ python3.11 -m venv .venv
 ## Try it
 
 ```bash
-sdg version
+sdg certify                                # audit machine + write passport (once/30d)
+sdg preflight                              # which processing paths are enabled
 sdg packs                                  # list installed country packs
+sdg classify --file some_file.txt          # data class + allowed paths
 sdg detect --file some_invoice.txt         # detect PII (unstructured)
 sdg detect --file payroll.csv --csv        # tabular: detection by column header
+sdg protocol list                          # vetted, GDPR-compliant work recipes
+sdg ingest-scan --file f --channel telegram  # channel pre-gate for remote files
 ```
+
+## For agents
+
+Point the skill loader at [`SKILL.md`](SKILL.md). Authoring guides:
+[work protocols](docs/protocol-authoring.md),
+[country packs](docs/country-pack-authoring.md), and a
+[DPIA template](docs/dpia-template.md).
 
 ## Test
 

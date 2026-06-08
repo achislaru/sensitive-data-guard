@@ -35,3 +35,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions use [Se
 - Tests: 32 passing (4 new: special-category on Telegram quarantined + incident
   logged, special-category on a local channel allowed, non-personal on Telegram
   allowed, missing file allowed).
+- F6: agent-facing layer. `SKILL.md` (skill frontmatter + triggers; protocol-
+  first workflow, manual primitives as fallback, the condensed rules). One-
+  command `install.sh` (venv + editable install + spaCy model per locale, with
+  `md_MD` mapped to the shared Romanian model, then `certify`). `docs/`:
+  architecture (subsystem map, paths, certification tiers, channels, protocols,
+  state layout), protocol-authoring, country-pack-authoring, and a DPIA template
+  (Art. 35). README status refreshed.
