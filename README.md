@@ -10,9 +10,9 @@ cloud-direct), pseudonymizes anything that goes to the cloud, and **fails closed
 
 > **Status:** active development. Implemented: core pipeline + `ro_RO` country
 > pack, machine certification + signed passport + tiered fail-closed guard, the
-> work-protocol library (meta-skill) with 6 built-ins, and the channel pre-gate
-> for Telegram/Slack. On the roadmap: the Moldova (`md_MD`) pack and CI.
-> See [`docs/architecture.md`](docs/architecture.md).
+> work-protocol library (meta-skill) with 6 built-ins, the channel pre-gate for
+> Telegram/Slack, and country packs for Romania (`ro_RO`) and Moldova (`md_MD`).
+> On the roadmap: CI. See [`docs/architecture.md`](docs/architecture.md).
 
 ## How it works (in one picture)
 
@@ -35,7 +35,8 @@ by a local model (Ollama). Only pseudonymized text is ever sent to a cloud model
   values — the log can't become a leak. Retention deletes conversations after
   90 days and anonymizes audit entries after 12 months.
 - **Country packs**: PII recognizers, validators and synthetic-data generators
-  are pluggable per locale. `ro_RO` (Romania) ships first.
+  are pluggable per locale. `ro_RO` (Romania) and `md_MD` (Moldova) ship today;
+  Moldova reuses the Romanian language model but ships its own identifiers.
 
 ## Install
 

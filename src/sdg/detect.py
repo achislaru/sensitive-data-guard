@@ -30,7 +30,7 @@ def detect(text: str, locale: str = "ro_RO", is_csv: bool = False) -> list:
     analyzer, pack, lang = _engine_for(locale)
     results = analyzer.analyze(text=text, entities=pack.entities, language=lang)
     if is_csv:
-        from .packs.ro_RO.columns import analyze_csv  # locale-specific for now
+        from .packs.tabular import analyze_csv
         results = analyze_csv(text, pack.csv_columns()) + list(results)
     # resolve overlaps: prefer higher score, then longer span
     results = sorted(results, key=lambda d: (-d.score, -(d.end - d.start)))

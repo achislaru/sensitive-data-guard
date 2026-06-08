@@ -35,6 +35,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions use [Se
 - Tests: 32 passing (4 new: special-category on Telegram quarantined + incident
   logged, special-category on a local channel allowed, non-personal on Telegram
   allowed, missing file allowed).
+- F7: Moldova country pack (`md_MD`) — IDNP (person) and IDNO (legal entity)
+  state-ID validators (shared 7-3-1 mod-10 checksum, disambiguated by context),
+  IBAN-MD (mod-97), `+373` phones, deterministic synthetic generator, and
+  Romanian-language CSV column rules. Reuses the Romanian spaCy model
+  (`ro_core_news_lg`) — proving the language-model / country-validator split.
+  `MD_IDNP` forces `special_category`. The generic CSV scanner moved to a shared
+  `sdg.packs.tabular` module (ro_RO/md_MD supply only header vocab). Tests:
+  validators, 100%-recall IDNP/IBAN detection, special-category routing.
 - F6: agent-facing layer. `SKILL.md` (skill frontmatter + triggers; protocol-
   first workflow, manual primitives as fallback, the condensed rules). One-
   command `install.sh` (venv + editable install + spaCy model per locale, with

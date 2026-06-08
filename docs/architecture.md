@@ -41,7 +41,7 @@ never leaves the machine. Cloud models only ever see pseudonymized text.
 ├─────────────────────────────────────────────────────────────────┤
 │ 1. detect.py         detection engine (Presidio + spaCy)          │
 │    packs/            country packs: recognizers + validators +    │
-│                      synthetic generators (ro_RO; md_MD planned)  │
+│                      synthetic generators (ro_RO, md_MD)          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 

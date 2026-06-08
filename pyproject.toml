@@ -33,6 +33,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "sdg.packs.ro_RO" = ["thresholds.yaml", "fixtures/*"]
+"sdg.packs.md_MD" = ["thresholds.yaml", "fixtures/*"]
 "sdg.protocols" = ["schema.json", "_template.yaml", "builtin/*.yaml"]
 
 [tool.pytest.ini_options]

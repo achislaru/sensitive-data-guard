@@ -1,0 +1,7 @@
+# Pass bars for md_MD pack certification.
+recall_global: 0.95        # overall PII detection recall on synthetic fixtures
+recall_critical: 1.0       # IDNP + IBAN must be 100%
+benchmark:                 # local-model capability gate (see benchmark subsystem)
+  idnp_extraction: 20      # min IDNPs extracted from the 20-row payroll
+  iban_extraction: 20      # min IBANs extracted
+  invented_max: 0          # zero hallucinated identifiers tolerated
