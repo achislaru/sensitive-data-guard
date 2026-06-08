@@ -18,10 +18,11 @@ PASSPORT = STATE_DIR / "passport.json"
 AUDIT_DIR = STATE_DIR / "audit"
 QUARANTINE_DIR = STATE_DIR / "quarantine"
 CONV_DIR = STATE_DIR / "conversations"
+SESSIONS_DIR = STATE_DIR / "sessions"
 
 
 def ensure_state() -> None:
-    for d in (STATE_DIR, AUDIT_DIR, QUARANTINE_DIR, CONV_DIR):
+    for d in (STATE_DIR, AUDIT_DIR, QUARANTINE_DIR, CONV_DIR, SESSIONS_DIR):
         d.mkdir(parents=True, exist_ok=True)
     try:
         STATE_DIR.chmod(0o700)

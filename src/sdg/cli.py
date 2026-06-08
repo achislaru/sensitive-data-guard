@@ -1,15 +1,36 @@
 """sdg command-line interface.
 
-F1 ships a minimal surface (version, detect, packs); certify/preflight/
-pseudonymize/restore/audit/protocol are wired in later phases. Exit code != 0
-always means a hard stop (e.g. outbound PII guard tripped).
+Exit codes: 0 = ok; 2 = refusal/hard stop (preflight refused, outbound PII
+guard tripped, classification/path conflict). The agent MUST treat exit != 0
+as a hard stop.
 """
 import argparse
 import json
+import re
 import sys
 
-from . import __version__
+from . import __version__, paths
 
+
+def _read(path: str) -> str:
+    if path == "-":
+        return sys.stdin.read()
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def _is_csv(path: str, flag: bool) -> bool:
+    return flag or path.lower().endswith(".csv")
+
+
+def _pii_counts(spans) -> dict:
+    out = {}
+    for d in spans:
+        out[d.entity_type] = out.get(d.entity_type, 0) + 1
+    return out
+
+
+# ----------------------------------------------------------------- commands
 
 def _cmd_version(args):
     print(__version__)
@@ -24,26 +45,153 @@ def _cmd_packs(args):
 
 def _cmd_detect(args):
     from .detect import detect
-    text = sys.stdin.read() if args.file == "-" else open(args.file, encoding="utf-8").read()
-    spans = detect(text, locale=args.locale, is_csv=args.csv)
+    spans = detect(_read(args.file), locale=args.locale,
+                   is_csv=_is_csv(args.file, args.csv))
     out = [{"type": d.entity_type, "start": d.start, "end": d.end,
             "score": round(d.score, 2)} for d in spans]
     print(json.dumps({"count": len(out), "spans": out}, ensure_ascii=False))
     return 0
 
 
+def _cmd_classify(args):
+    from .classify import classify_text
+    res = classify_text(_read(args.file), locale=args.locale,
+                        is_csv=_is_csv(args.file, args.csv))
+    print(json.dumps(res, ensure_ascii=False))
+    return 0
+
+
+def _cmd_certify(args):
+    from . import certify
+    pp = certify.certify(run_benchmark=not args.no_benchmark, local_model=args.model)
+    summary = {
+        "machine_id": pp["machine_id"], "expires": pp["expires"],
+        "paths_enabled": pp["paths_enabled"],
+        "components": {k: v.get("status") for k, v in pp["components"].items()},
+        "machine": {k: v.get("status") for k, v in pp["machine"].items()},
+        "packs": {k: v.get("self_test") for k, v in pp["packs"].items()},
+    }
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
+    return 0
+
+
+def _cmd_preflight(args):
+    from .guard import preflight
+    res = preflight()
+    print(json.dumps(res, ensure_ascii=False))
+    return 0 if res["ok"] else 2
+
+
+def _session_vault(session: str, locale: str):
+    from .packs.registry import load_pack
+    from .vault import Vault
+    paths.ensure_state()
+    db = paths.SESSIONS_DIR / f"{re.sub(r'[^A-Za-z0-9_-]', '_', session)}.db"
+    return Vault(db=db, key=paths.VAULT_KEY, label_map=load_pack(locale).label_map)
+
+
+def _cmd_pseudonymize(args):
+    from .pipeline import OutboundPiiError, pseudonymize
+    text = _read(args.file)
+    vault = _session_vault(args.session, args.locale)
+    try:
+        out = pseudonymize(text, vault, locale=args.locale,
+                           is_csv=_is_csv(args.file, args.csv))
+    except OutboundPiiError as e:
+        print(f"HARD STOP: {e}", file=sys.stderr)
+        return 2
+    if args.out and args.out != "-":
+        with open(args.out, "w", encoding="utf-8") as f:
+            f.write(out)
+    else:
+        sys.stdout.write(out)
+    return 0
+
+
+def _cmd_restore(args):
+    vault = _session_vault(args.session, args.locale)
+    out = vault.restore(_read(args.file))
+    if args.out and args.out != "-":
+        with open(args.out, "w", encoding="utf-8") as f:
+            f.write(out)
+    else:
+        sys.stdout.write(out)
+    return 0
+
+
+def _cmd_audit(args):
+    from . import audit
+    if args.audit_cmd == "retention":
+        print(json.dumps(audit.apply_retention(), ensure_ascii=False))
+    elif args.audit_cmd == "summary":
+        print(json.dumps(audit.monthly_summary(args.month), ensure_ascii=False,
+                         indent=2))
+    elif args.audit_cmd == "log":
+        types = json.loads(args.types) if args.types else {}
+        audit.log_interaction(args.user, args.category, args.path, types,
+                              source_channel=args.channel,
+                              protocol_id=args.protocol, source_file=args.file or "",
+                              model=args.model or "")
+        print(json.dumps({"logged": True}))
+    return 0
+
+
+# ----------------------------------------------------------------- parser
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="sdg", description="sensitive-data-guard")
+    p.add_argument("--locale", default="ro_RO", help="country pack locale")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    sub.add_parser("version", help="print version").set_defaults(func=_cmd_version)
-    sub.add_parser("packs", help="list installed country packs").set_defaults(func=_cmd_packs)
+    sub.add_parser("version").set_defaults(func=_cmd_version)
+    sub.add_parser("packs").set_defaults(func=_cmd_packs)
 
-    d = sub.add_parser("detect", help="detect PII in a file (or - for stdin)")
+    d = sub.add_parser("detect", help="detect PII (file or - for stdin)")
     d.add_argument("--file", required=True)
-    d.add_argument("--locale", default="ro_RO")
-    d.add_argument("--csv", action="store_true", help="treat input as tabular CSV")
+    d.add_argument("--csv", action="store_true")
     d.set_defaults(func=_cmd_detect)
+
+    c = sub.add_parser("classify", help="classify data + allowed paths")
+    c.add_argument("--file", required=True)
+    c.add_argument("--csv", action="store_true")
+    c.set_defaults(func=_cmd_classify)
+
+    cert = sub.add_parser("certify", help="audit machine + write passport")
+    cert.add_argument("--no-benchmark", action="store_true")
+    cert.add_argument("--model", default="gemma3:27b")
+    cert.set_defaults(func=_cmd_certify)
+
+    sub.add_parser("preflight", help="verify passport, return enabled paths") \
+        .set_defaults(func=_cmd_preflight)
+
+    ps = sub.add_parser("pseudonymize", help="pseudonymize a file (fail-closed)")
+    ps.add_argument("--file", required=True)
+    ps.add_argument("--session", required=True)
+    ps.add_argument("--csv", action="store_true")
+    ps.add_argument("--out", default="-")
+    ps.set_defaults(func=_cmd_pseudonymize)
+
+    rs = sub.add_parser("restore", help="restore real values in a response")
+    rs.add_argument("--file", required=True)
+    rs.add_argument("--session", required=True)
+    rs.add_argument("--out", default="-")
+    rs.set_defaults(func=_cmd_restore)
+
+    au = sub.add_parser("audit", help="audit log / retention / summary")
+    ausub = au.add_subparsers(dest="audit_cmd", required=True)
+    al = ausub.add_parser("log")
+    al.add_argument("--user", required=True)
+    al.add_argument("--category", required=True)
+    al.add_argument("--path", required=True)
+    al.add_argument("--types", help='JSON like {"RO_CNP":20}')
+    al.add_argument("--channel", default="cli")
+    al.add_argument("--protocol", default="")
+    al.add_argument("--file", default="")
+    al.add_argument("--model", default="")
+    ausub.add_parser("retention")
+    asum = ausub.add_parser("summary")
+    asum.add_argument("--month", required=True, help="YYYY-MM")
+    au.set_defaults(func=_cmd_audit)
 
     return p
 
