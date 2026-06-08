@@ -119,6 +119,14 @@ def _cmd_restore(args):
     return 0
 
 
+def _cmd_ingest_scan(args):
+    from .channels import ingest_scan
+    res = ingest_scan(args.file, args.channel, locale=args.locale)
+    print(json.dumps(res, ensure_ascii=False))
+    # quarantine is a hard stop signal to the agent
+    return 2 if res["action"] == "quarantine" else 0
+
+
 def _cmd_protocol(args):
     from .protocols import engine, linter, loader
     sub = args.protocol_cmd
@@ -240,6 +248,12 @@ def build_parser() -> argparse.ArgumentParser:
     rs.add_argument("--session", required=True)
     rs.add_argument("--out", default="-")
     rs.set_defaults(func=_cmd_restore)
+
+    ig = sub.add_parser("ingest-scan", help="channel pre-gate on an inbound file")
+    ig.add_argument("--file", required=True)
+    ig.add_argument("--channel", default="cli",
+                    help="cli|telegram|slack|other")
+    ig.set_defaults(func=_cmd_ingest_scan)
 
     pr = sub.add_parser("protocol", help="work-protocol library")
     prsub = pr.add_subparsers(dest="protocol_cmd", required=True)

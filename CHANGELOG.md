@@ -23,5 +23,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions use [Se
   invoice-processing, payroll-analysis, contract-review, expense-reconciliation,
   gdpr-subject-request). CLI: `protocol list|validate|dryrun|run|resume|new|
   export|import`. Audit entries now carry `protocol_id`.
-- Tests: 28 passing (12 new: schema/linter, the no-special-to-cloud invariant,
-  undeclared-placeholder rejection, dryrun across all six built-ins).
+- F9: channel pre-gate (`src/sdg/channels.py`, CLI `ingest-scan`). Channel ×
+  data-class policy matrix — special-category data arriving on a remote channel
+  (Telegram/Slack) is quarantined (file moved to state, DPIA incident-candidate
+  logged) with a remediation message; personal data warns; non-personal allows.
+  Local channels (cli) never quarantine. Binary attachments on remote channels
+  warn (cannot be content-scanned). Optional, transport-agnostic
+  `hooks/ingest_scan.py` (`UserPromptSubmit`) infers the channel from the file
+  path and blocks/annotates the turn — zero modifications to cortextOS code, and
+  fail-open on hook errors (the CLI/protocol layer stays authoritative).
+- Tests: 32 passing (4 new: special-category on Telegram quarantined + incident
+  logged, special-category on a local channel allowed, non-personal on Telegram
+  allowed, missing file allowed).
