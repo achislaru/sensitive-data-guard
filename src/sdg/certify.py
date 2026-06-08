@@ -15,11 +15,14 @@ from .packs.registry import available_locales, load_pack
 
 def _measure(pack, th) -> dict:
     """Detection recall on the pack's own synthetic fixtures."""
+    # ground-truth type (as emitted by each pack's generator) -> Presidio types
     COMPAT = {
-        "CNP": {"RO_CNP", "MD_IDNP"}, "IBAN": {"RO_IBAN", "MD_IBAN", "IBAN_CODE"},
-        "CUI": {"RO_CUI", "MD_IDNO"}, "NAME": {"PERSON"},
-        "EMAIL": {"EMAIL_ADDRESS"}, "PHONE": {"RO_PHONE", "MD_PHONE", "PHONE_NUMBER"},
-        "ADDRESS": {"LOCATION"}, "BIRTHDATE": {"RO_DATE", "DATE_TIME"},
+        "CNP": {"RO_CNP"}, "IDNP": {"MD_IDNP"},
+        "CUI": {"RO_CUI"}, "IDNO": {"MD_IDNO"},
+        "IBAN": {"RO_IBAN", "MD_IBAN", "IBAN_CODE"},
+        "NAME": {"PERSON"}, "EMAIL": {"EMAIL_ADDRESS"},
+        "PHONE": {"RO_PHONE", "MD_PHONE", "PHONE_NUMBER"},
+        "ADDRESS": {"LOCATION"}, "BIRTHDATE": {"RO_DATE", "MD_DATE", "DATE_TIME"},
         "ORG": {"ORGANIZATION"}, "SALARY": set(),
     }
     with tempfile.TemporaryDirectory() as tmp:
@@ -50,7 +53,11 @@ def _measure(pack, th) -> dict:
     detected = sum(d for d, _ in per.values())
     total = sum(t for _, t in per.values()) or 1
     recall = detected / total
-    crit = [per.get(k, [0, 1]) for k in ("CNP", "IBAN")]
+    # critical = the pack's math-validated identifiers (national ID, IBAN, …):
+    # the ground-truth types whose mapped entities are check-digit-validated.
+    validated = set(pack.validators().keys())
+    crit_keys = [k for k, ents in COMPAT.items() if ents & validated]
+    crit = [per[k] for k in crit_keys if k in per]
     crit_ok = all(d == t for d, t in crit)
     passed = recall >= th.get("recall_global", 0.95) and (
         crit_ok if th.get("recall_critical", 1.0) >= 1.0 else True)

@@ -31,6 +31,17 @@ def test_pack_registered():
     assert load_pack("md_MD").locale == "md_MD"
 
 
+def test_certify_self_test_passes_for_both_packs():
+    # regression: certify._measure must recognize each pack's own ground-truth
+    # type names (md_MD emits IDNP/IDNO/MD_DATE, not CNP/CUI/RO_DATE) and derive
+    # the critical set from the pack, not a hardcoded ("CNP","IBAN").
+    from sdg import certify
+    for loc in ("ro_RO", "md_MD"):
+        p = load_pack(loc)
+        res = certify._measure(p, p.thresholds())
+        assert res["self_test"] == "pass", f"{loc}: {res}"
+
+
 def test_validators_check_digits():
     # a known self-consistent IDNP from the generator algorithm
     from sdg.packs.md_MD.validators import _idn_control
